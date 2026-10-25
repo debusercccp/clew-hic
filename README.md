@@ -39,6 +39,20 @@ Per rigenerarle: `make mcool ACC=4DNFIXP4QG5B && uv run python scripts/readme_fi
 | ![P(s)](docs/img/ps.png) | ![Circos](docs/img/circos.png) |
 | **P(s) di chr2.** Pendenza circa −1 tra 100 kb e 1 Mb, tipica della cromatina in interfase, poi più ripida oltre i TAD. La risalita oltre 100 Mb è un effetto di bordo: a quelle distanze restano pochissime coppie di bin. | **Circos a 1 Mb.** In magenta i contatti trans, in arancione i cis oltre 10 Mb, in verde chr2. Le corde si addensano sui cromosomi piccoli e ricchi di geni (19, 22, 17), al centro del nucleo, e sono rare su 18, 13 e X, più periferici. Fra le più forti c'è chr1:149 Mb ↔ chr6:26 Mb, i due cluster dei geni istonici (HIST2 e HIST1), noti per raccogliersi insieme. Altre corde forti, come chr2:87 Mb ↔ chrX:144 Mb, non sono interpretate e vanno verificate. |
 
+## Provenienza dei dati
+
+clew non produce dati: lavora su matrici e genomi pubblici, scaricati dalle fonti originali con verifica MD5. Nessuna di queste fonti richiede un account.
+
+| Dati | Fonte | Come si ottengono |
+|---|---|---|
+| Matrici Hi-C `.mcool` (GM12878, HFFc6) | [4DN Data Portal](https://data.4dnucleome.org), file processati e bilanciati dalla pipeline 4DN | `make mcool ACC=…` |
+| GM12878 `4DNFIXP4QG5B`, usato per tutte le figure | Rao et al. 2014, *Cell* 159:1665 (Aiden lab), ripubblicato dal 4DN su hg38 | `make mcool ACC=4DNFIXP4QG5B` |
+| HFFc6 (Hi-C e Micro-C) | Dekker lab, 4DN | `make mcool ACC=4DNFIT3ABRQL` |
+| Genomi hg38 e mm10 (FASTA, `chrom.sizes`) | [UCSC Genome Browser](https://hgdownload.soe.ucsc.edu/downloads.html) | `make genome ASM=hg38` |
+| Dataset sintetico (`data/demo/`) | generato da `clew/synthetic.py`, con TAD e compartimenti noti | test e notebook, senza download |
+
+Altri `.mcool` (o `.hic` da convertire) si possono prendere da ENCODE o GEO: i dettagli sono nella [sezione 2](#2-dati). Se pubblichi risultati, cita lo studio originale del dataset e il 4DN Data Portal.
+
 ## 1. Ambiente
 
 Le dipendenze sono dichiarate in `pyproject.toml` e bloccate in `uv.lock`, gestite con [uv](https://docs.astral.sh/uv/). Le stesse versioni esatte finiscono nell'immagine Docker (consigliato) e in un venv locale.
@@ -246,6 +260,12 @@ Il notebook `notebooks/01_explore.ipynb` mette tutto insieme su chr2. Se il `.mc
 
 HiGlass mostra le matrici come una mappa (stile Google Maps): zoom continuo dal genoma intero fino a 1 kb, con le tile calcolate al volo dal `.mcool`.
 
+clew aggiunge un server HiGlass locale in Docker e lo script `clew/ingest_higlass.py`. Lo script registra i `.mcool` senza copiarli, carica le dimensioni dei cromosomi per gli assi e genera la vista. Basta un comando per passare da un file in `data/` a una mappa navigabile nel browser, e non serve nessun account: tutto resta su 127.0.0.1.
+
+![HiGlass su GM12878, chr2:14–17 Mb](docs/img/higlass.png)
+
+**GM12878 (`4DNFIXP4QG5B`) in HiGlass, chr2 tra 14 e 17 Mb circa.** Lungo la diagonale si vedono i TAD come quadrati più scuri, con un confine netto poco sotto 15,5 Mb. I puntini agli angoli dei domini sono i loop. Le linee bianche verso 16,6 Mb sono bin esclusi dal bilanciamento. La scala colori è logaritmica e il mirino segue il mouse.
+
 ```bash
 make higlass-ingest FILES=data/4DNFIXP4QG5B.mcool REGION=chr2:10Mb-20Mb
 ```
@@ -279,4 +299,3 @@ python -m pytest            # in locale, con l'ambiente attivo
 ```
 
 I test usano un `.mcool` sintetico (`clew/synthetic.py`) con struttura nota. Verificano lettura per regione, limite di memoria, grafici, decadimento di P(s), recupero dei compartimenti A/B dal segno di E1, posizione dei confini di TAD, CLI, Circos (un hotspot trans e uno cis noti devono risultare le prime corde), e per HiGlass mappatura dei percorsi, identificativi, coordinate e viewconf. La registrazione vera richiede il server attivo e non è nei test automatici.
-# clew-hic
