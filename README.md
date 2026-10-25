@@ -27,8 +27,8 @@ Non c'è nessuna pipeline di allineamento: si parte dai file del 4DN Data Portal
 
 ## Esempi su dati reali
 
-Figure generate da `scripts/readme_figures.py` sul dataset **GM12878 in situ Hi-C** del 4DN, file [`4DNFIXP4QG5B`](https://data.4dnucleome.org/files-processed/4DNFIXP4QG5B/): 4,01 miliardi di contatti, MboI, 72 librerie unite, dati di Rao et al. 2014, hg38.
-Per rigenerarle: `make mcool ACC=4DNFIXP4QG5B && uv run python scripts/readme_figures.py data/4DNFIXP4QG5B.mcool`. Ci vogliono circa 5 minuti, con un picco di circa 6 GB di RAM.
+Figure sul dataset **GM12878 in situ Hi-C** del 4DN, file [`4DNFIXP4QG5B`](https://data.4dnucleome.org/files-processed/4DNFIXP4QG5B/): 4,01 miliardi di contatti, MboI, 72 librerie unite, dati di Rao et al. 2014, hg38.
+Le prime sei sono generate da `scripts/readme_figures.py`, l'ultima è uno screenshot di HiGlass. Per rigenerare le prime sei: `make mcool ACC=4DNFIXP4QG5B && uv run python scripts/readme_figures.py data/4DNFIXP4QG5B.mcool`. Ci vogliono circa 5 minuti, con un picco di circa 6 GB di RAM.
 
 | | |
 |---|---|
@@ -38,6 +38,8 @@ Per rigenerarle: `make mcool ACC=4DNFIXP4QG5B && uv run python scripts/readme_fi
 | **chr2:12–16 Mb a 5 kb.** Insulation score con finestra di 50 kb. Le linee blu sono i confini chiamati (soglia di Li): cadono nei minimi della curva, dove i contatti non attraversano il confine. | **Compartimenti di chr2 a 100 kb.** E1 orientato con il contenuto GC di hg38: rosso = A (attivo, ricco in GC), blu = B. I blocchi seguono la scacchiera della matrice. |
 | ![P(s)](docs/img/ps.png) | ![Circos](docs/img/circos.png) |
 | **P(s) di chr2.** Pendenza circa −1 tra 100 kb e 1 Mb, tipica della cromatina in interfase, poi più ripida oltre i TAD. La risalita oltre 100 Mb è un effetto di bordo: a quelle distanze restano pochissime coppie di bin. | **Circos a 1 Mb.** In magenta i contatti trans, in arancione i cis oltre 10 Mb, in verde chr2. Le corde si addensano sui cromosomi piccoli e ricchi di geni (19, 22, 17), al centro del nucleo, e sono rare su 18, 13 e X, più periferici. Fra le più forti c'è chr1:149 Mb ↔ chr6:26 Mb, i due cluster dei geni istonici (HIST2 e HIST1), noti per raccogliersi insieme. Altre corde forti, come chr2:87 Mb ↔ chrX:144 Mb, non sono interpretate e vanno verificate. |
+| ![HiGlass](docs/img/higlass.png) | |
+| **HiGlass, chr2:14–17 Mb circa.** La stessa matrice esplorata nel browser con zoom continuo (sezione 6): TAD lungo la diagonale, loop agli angoli dei domini, linee bianche dove i bin sono esclusi dal bilanciamento. | |
 
 ## Provenienza dei dati
 
