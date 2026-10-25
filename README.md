@@ -16,13 +16,28 @@ Non c'è nessuna pipeline di allineamento: si parte dai file del 4DN Data Portal
 │   ├── synthetic.py      # .mcool sintetico con struttura nota (test e demo)
 │   └── ingest_higlass.py # registra .mcool nel server HiGlass e crea la vista
 ├── tests/                # pytest su dati sintetici
-├── scripts/              # download di genoma e .mcool
+├── scripts/              # download di genoma e .mcool, figure del README
+├── docs/img/             # figure del README (GM12878)
 ├── docker/Dockerfile
 ├── docker-compose.yml    # servizi lab (JupyterLab), worker (batch), higlass (viz)
 ├── pyproject.toml        # dipendenze (progetto `clew-hic`)
 ├── uv.lock               # versioni esatte, usate da Docker e da `uv sync`
 └── Makefile
 ```
+
+## Esempi su dati reali
+
+Figure generate da `scripts/readme_figures.py` sul dataset **GM12878 in situ Hi-C** del 4DN, file [`4DNFIXP4QG5B`](https://data.4dnucleome.org/files-processed/4DNFIXP4QG5B/): 4,01 miliardi di contatti, MboI, 72 librerie unite, dati di Rao et al. 2014, hg38.
+Per rigenerarle: `make mcool ACC=4DNFIXP4QG5B && uv run python scripts/readme_figures.py data/4DNFIXP4QG5B.mcool`. Ci vogliono circa 5 minuti, con un picco di circa 6 GB di RAM.
+
+| | |
+|---|---|
+| ![chr2 intero](docs/img/chromosome.png) | ![zoom 10 Mb](docs/img/zoom.png) |
+| **chr2 a 250 kb.** La scacchiera fuori dalla diagonale sono i compartimenti A/B. La banda bianca a circa 93 Mb è il centromero: DNA ripetuto, nessuna lettura mappabile, bin esclusi dal bilanciamento. | **chr2:10–20 Mb a 10 kb.** I quadrati lungo la diagonale sono i TAD. A questa profondità sono già visibili domini annidati. |
+| ![TAD e insulation](docs/img/tads.png) | ![compartimenti](docs/img/compartments.png) |
+| **chr2:12–16 Mb a 5 kb.** Insulation score con finestra di 50 kb. Le linee blu sono i confini chiamati (soglia di Li): cadono nei minimi della curva, dove i contatti non attraversano il confine. | **Compartimenti di chr2 a 100 kb.** E1 orientato con il contenuto GC di hg38: rosso = A (attivo, ricco in GC), blu = B. I blocchi seguono la scacchiera della matrice. |
+| ![P(s)](docs/img/ps.png) | ![Circos](docs/img/circos.png) |
+| **P(s) di chr2.** Pendenza circa −1 tra 100 kb e 1 Mb, tipica della cromatina in interfase, poi più ripida oltre i TAD. La risalita oltre 100 Mb è un effetto di bordo: a quelle distanze restano pochissime coppie di bin. | **Circos a 1 Mb.** In magenta i contatti trans, in arancione i cis oltre 10 Mb, in verde chr2. Le corde si addensano sui cromosomi piccoli e ricchi di geni (19, 22, 17), al centro del nucleo, e sono rare su 18, 13 e X, più periferici. Fra le più forti c'è chr1:149 Mb ↔ chr6:26 Mb, i due cluster dei geni istonici (HIST2 e HIST1), noti per raccogliersi insieme. Altre corde forti, come chr2:87 Mb ↔ chrX:144 Mb, non sono interpretate e vanno verificate. |
 
 ## 1. Ambiente
 
@@ -34,7 +49,7 @@ Serve solo Docker con il plugin Compose.
 
 ```bash
 make build      # costruisce l'immagine clew-env (1,5 GB; ~3-8 min la prima volta)
-make test       # 34 test su dati sintetici, in un container usa-e-getta
+make test       # 40 test su dati sintetici, in un container usa-e-getta
 make notebook   # avvia JupyterLab e apre notebooks/01_explore.ipynb nel browser
 ```
 
@@ -166,7 +181,7 @@ Una matrice densa di *n* bin occupa *n*² × 8 byte (float64). Nella pratica con
 
 Regole pratiche:
 - **Zoom ad alta risoluzione solo per finestre.** 5–10 kb vanno bene fino a circa 20 Mb (4 000 bin, ~130 MB). `fetch_region` rifiuta oltre `max_bins=5000` per lato (~200 MB) e suggerisce di abbassare la risoluzione.
-- **P(s) e insulation** leggono i pixel a blocchi dal file HDF5: a 10 kb restano sotto qualche GB anche su un cromosoma intero.
+- **P(s) e insulation** leggono i pixel a blocchi dal file HDF5. Con i default di cooltools (10–20 milioni di pixel per blocco), su `4DNFIXP4QG5B` ogni processo arrivava a **4,6 GB**: con `nproc=4` il picco sarebbe stato di circa 19 GB. clew usa blocchi da 2 milioni (`analysis.CHUNKSIZE`): **1,1–1,3 GB per processo**, stesso risultato e solo l'11% di tempo in più (misurato su chr2 a 10 kb).
 - **Compartimenti**: a 100 kb, chr1 occupa ~50 MB per matrice. A 25 kb sarebbero ~0,8 GB, più le copie interne di cooltools.
 - Il file `.mcool` resta su disco e viene letto solo per la parte richiesta: un file da 27 GB non occupa 27 GB di RAM.
 
@@ -192,19 +207,34 @@ gc = analysis.gc_phasing_track(clr100, "data/genomes/hg38/hg38.fa", "chr2")
 eigs = analysis.compartments(clr100, gc, "chr2")                # E1 + colonna A/B
 ```
 
-**Vista circolare (Circos)** del genoma intero, a bassa risoluzione: corde magenta tra i bin di cromosomi diversi con contatti trans più alti dell'atteso, corde verdi per la regione evidenziata, anello con E1.
+**Vista circolare (Circos)** del genoma intero, a bassa risoluzione. L'anello interno mostra E1 (rosso = A, blu = B).
+- **Corde magenta (trans):** contatti tra cromosomi diversi più alti della media di quella coppia di cromosomi.
+- **Petali arancioni (cis a lungo raggio):** contatti nello stesso cromosoma, oltre `min_distance`, più alti dell'atteso per la loro distanza (la media della diagonale).
+- **Corde verdi:** quelle che toccano la regione evidenziata.
 
 ```python
-from clew.circos import plot_circos, trans_links
+import pandas as pd
+from clew.circos import cis_links, plot_circos, trans_links
 
 clr1m = hic_io.open_cooler(path, 1_000_000)               # ~3 100 bin, 76 MB
 chroms = list(analysis.make_view(clr1m)["chrom"])
-links = trans_links(clr1m, chroms, top_n=1000)           # chrom1..end2, balanced, oe
+links = pd.concat([trans_links(clr1m, chroms, top_n=1000),
+                   cis_links(clr1m, chroms, min_distance=10_000_000, top_n=300)])
 e1 = analysis.compartments(clr1m, analysis.gc_phasing_track(clr1m, "data/genomes/hg38/hg38.fa"))
 plot_circos(clr1m.chromsizes[chroms], links, track=e1, highlight="chr2", out="results/circos.png")
 ```
 
-`trans_links` rifiuta le matrici oltre 5 000 bin: per il Circos usa 500 kb – 1 Mb.
+`trans_links` e `cis_links` rifiutano le matrici oltre 5 000 bin: per il Circos usa 500 kb – 1 Mb.
+
+**Filtri contro gli artefatti.** Senza filtri, le corde "più arricchite" cadono quasi tutte su regioni dove le letture mappano male:
+- bordi dei centromeri (DNA satellite);
+- estremità dei cromosomi;
+- bracci corti degli acrocentrici;
+- chrY in una linea femminile come GM12878. Le sue letture vengono da regioni quasi identiche su chrX, per esempio la regione X-trasposta chrX:89–93 Mb ↔ chrY:3–6 Mb.
+
+Per questo entrambe le funzioni escludono i cromosomi con meno del 50% di bin validi (`min_valid_frac`) e i bin entro 2 bin da un buco o da un'estremità (`edge_bins`). Su `4DNFIXP4QG5B` questo ha tolto chrY, che prima occupava 306 estremi di corda su 2 000, e tutti i picchi pericentromerici.
+
+Perché cis e trans sono trattati in modo diverso: i contatti cis seguono il filo del cromosoma e calano con la distanza, quindi l'atteso dipende da quanto sono lontani i due punti. I trans avvengono solo ai bordi dei territori cromosomici, quindi l'atteso è una media per coppia di cromosomi. Per questo nel grafico le due intensità sono scalate separatamente.
 
 Ogni funzione di `analysis` prende un `cooler.Cooler` e ritorna un `DataFrame`. Il parametro `regions` accetta nomi di cromosoma o regioni UCSC.
 
@@ -248,5 +278,5 @@ make test                   # in Docker
 python -m pytest            # in locale, con l'ambiente attivo
 ```
 
-I test usano un `.mcool` sintetico (`clew/synthetic.py`) con struttura nota. Verificano lettura per regione, limite di memoria, grafici, decadimento di P(s), recupero dei compartimenti A/B dal segno di E1, posizione dei confini di TAD, CLI, Circos (un hotspot trans noto deve risultare la prima corda), e per HiGlass mappatura dei percorsi, identificativi, coordinate e viewconf. La registrazione vera richiede il server attivo e non è nei test automatici.
+I test usano un `.mcool` sintetico (`clew/synthetic.py`) con struttura nota. Verificano lettura per regione, limite di memoria, grafici, decadimento di P(s), recupero dei compartimenti A/B dal segno di E1, posizione dei confini di TAD, CLI, Circos (un hotspot trans e uno cis noti devono risultare le prime corde), e per HiGlass mappatura dei percorsi, identificativi, coordinate e viewconf. La registrazione vera richiede il server attivo e non è nei test automatici.
 # clew-hic

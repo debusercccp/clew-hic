@@ -1,0 +1,41 @@
+# Unica fonte delle dipendenze, bloccate in uv.lock.
+# Usato in locale (`uv sync`) e dall'immagine Docker (docker/Dockerfile).
+[project]
+name = "clew-hic"
+version = "0.1.0"
+description = "Analisi e visualizzazione locale di matrici Hi-C (.mcool)"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    # Hi-C
+    "cooler>=0.10",
+    "cooltools>=0.7",          # solo sorgente su PyPI: serve un compilatore C
+    "bioframe>=0.7",
+    # stack numerico
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.1,<3",          # cooler non supporta ancora pandas 3 (infer_meta)
+    "h5py>=3.10",
+    "pybigwig>=0.3.22",
+    "pyfaidx>=0.8",            # bioframe.load_fasta (GC per i compartimenti)
+    # grafica: la cmap "fall" è registrata in hic_io (cooltools 0.7 non regge mpl>=3.9)
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    # client HTTP per ingest_higlass.py
+    "requests>=2.31",
+]
+
+[dependency-groups]
+notebook = ["jupyterlab>=4.1", "ipykernel"]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false              # clew/ si importa via PYTHONPATH, non si installa
+default-groups = ["notebook", "dev"]
+
+[tool.uv.extra-build-dependencies]
+# il sorgente di cooltools non dichiara numpy/cython come dipendenze di build
+cooltools = ["numpy", "cython"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

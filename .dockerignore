@@ -1,0 +1,4 @@
+# Il contesto di build serve solo per le dipendenze: niente dati da GB.
+*
+!pyproject.toml
+!uv.lock

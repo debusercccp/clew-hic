@@ -1,0 +1,63 @@
+name: clew
+
+# Configurazione comune a tutti i servizi Python: stessa immagine, stessi mount.
+x-hic-python: &hic-python
+  image: clew-env:latest
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    args:
+      HOST_UID: ${HOST_UID:-1000}
+      HOST_GID: ${HOST_GID:-1000}
+  volumes:
+    - .:/work                 # codice, notebook, test, results/
+    - ./data:/work/data:ro    # i dati non si modificano mai dai container
+  environment:
+    OMP_NUM_THREADS: ${OMP_NUM_THREADS:-4}
+
+services:
+  # JupyterLab interattivo su http://127.0.0.1:${LAB_PORT}
+  lab:
+    <<: *hic-python
+    ports:
+      - "127.0.0.1:${LAB_PORT:-8888}:8888"
+    mem_limit: ${LAB_MEM:-16g}
+    cpus: ${LAB_CPUS:-6}
+    restart: unless-stopped
+
+  # Job batch usa-e-getta, es.:
+  #   docker compose run --rm worker python -m clew.analysis insulation data/x.mcool --res 10000
+  # Più job in parallelo = più `run` contemporanei, ognuno col suo limite di RAM.
+  worker:
+    <<: *hic-python
+    profiles: [batch]
+    mem_limit: ${WORKER_MEM:-6g}
+    cpus: ${WORKER_CPUS:-2}
+    environment:
+      OMP_NUM_THREADS: ${OMP_NUM_THREADS:-4}
+      HIGLASS_URL: http://higlass        # rete interna di compose
+      HIGLASS_USER: ${HIGLASS_USER:-clew}
+      HIGLASS_PASSWORD: ${HIGLASS_PASSWORD:-}
+    command: ["python", "-m", "pytest", "-q"]
+
+  # Server HiGlass (tile server + app web) su http://127.0.0.1:${HIGLASS_PORT}
+  # I .mcool non vengono copiati: data/ è montata dentro la cartella media e
+  # clew/ingest_higlass.py li registra per percorso (API link_tile).
+  higlass:
+    image: higlass/higlass-docker:0.10.4
+    profiles: [viz]
+    ports:
+      - "127.0.0.1:${HIGLASS_PORT:-8989}:80"
+    environment:
+      WORKERS: ${HIGLASS_WORKERS:-4}   # processi uwsgi: tile in parallelo
+      HIGLASS_API_USER: ${HIGLASS_USER:-clew}         # creato da `make higlass`
+      HIGLASS_API_PASSWORD: ${HIGLASS_PASSWORD:-}
+    volumes:
+      - higlass-db:/data               # database sqlite, log, upload piccoli
+      - ./data:/data/media/hic:ro      # i tuoi .mcool, in sola lettura
+    mem_limit: ${HIGLASS_MEM:-6g}
+    cpus: ${HIGLASS_CPUS:-4}
+    restart: unless-stopped
+
+volumes:
+  higlass-db:

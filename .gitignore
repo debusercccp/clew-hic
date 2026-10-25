@@ -1,0 +1,32 @@
+# --- Dati: mai in git (file da GB). Si riscaricano con `make genome` / README ---
+data/*
+!data/.gitkeep
+*.mcool
+*.cool
+*.hic
+*.fa
+*.fa.gz
+*.fa.fai
+*.fasta
+*.2bit
+*.bw
+*.bigwig
+
+# --- Output delle analisi ---
+results/
+
+# --- Python / Jupyter ---
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+
+# --- Config locale (UID, porte, limiti RAM) ---
+.env
+
+# --- Editor / sistema ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
